@@ -1,8 +1,9 @@
 import type { Request, Response } from "express";
-import { Types } from "mongoose";
+import mongoose, { Types } from "mongoose";
 import { randomUUID } from "crypto";
 import Test from "../models/test.model.js";
 import Company from "../models/company.model.js";
+import TestCandidate from "../models/candidate.model.js";
 
 export async function createTest(req: Request, res: Response) {
   try {
@@ -19,9 +20,9 @@ export async function createTest(req: Request, res: Response) {
     if(!companyExists) return res.status(404).json({ error: "Company not found" });
 
     const test = await Test.create({
-      company: company_id,
       title,
-      description,
+      company_id: company_id,
+      company_name: companyExists.name,
       access_code: randomUUID().slice(0, 8),
       total_time_minutes,
       mobile_cam_required: mobile_cam_required ?? false,
@@ -47,9 +48,8 @@ export async function getAllTest(req: Request, res: Response) {
   try {
     const { companyId } = req.params;
 
-    if (!companyId || Array.isArray(companyId)) {
+    if(!companyId || Array.isArray(companyId))
       return res.status(400).json({ error: "Invalid company id" });
-    }
 
     const companyObjectId = new Types.ObjectId(companyId);
 
@@ -113,3 +113,76 @@ export async function deleteTest(req: Request, res: Response) {
     res.status(500).json({ error: "Failed to delete test" });
   }
 }
+
+
+export const addTestCandidates = async (req: Request, res: Response) => {
+  const { access_code } = req.params;
+  const { emails } = req.body;
+
+  // ---- Validate access code ----
+  if (typeof access_code !== "string") {
+    return res.status(400).json({
+      success: false,
+      message: "Invalid access code",
+    });
+  }
+
+  // ---- Validate emails ----
+  if (!Array.isArray(emails) || emails.length === 0) {
+    return res.status(400).json({
+      success: false,
+      message: "Emails array is required",
+    });
+  }
+
+  // ---- Find test by access code ----
+  const test = await Test.findOne({ access_code });
+  if (!test) {
+    return res.status(404).json({
+      success: false,
+      message: "Test not found",
+    });
+  }
+
+  const testObjectId = test._id;
+
+  // ---- Normalize emails ----
+  const normalizedEmails = emails
+    .map((e: unknown) =>
+      typeof e === "string" ? e.trim().toLowerCase() : null
+    )
+    .filter((e): e is string => Boolean(e));
+
+  const uniqueEmails = [...new Set(normalizedEmails)];
+
+  // ---- Fetch existing candidates ----
+  const existingCandidates = await TestCandidate.find({
+    test: testObjectId,
+    email: { $in: uniqueEmails },
+  }).select("email");
+
+  const existingEmailSet = new Set(
+    existingCandidates.map((c) => c.email)
+  );
+
+  // ---- Prepare inserts ----
+  const newCandidates = uniqueEmails
+    .filter((email) => !existingEmailSet.has(email))
+    .map((email) => ({
+      test: testObjectId,
+      email,
+    }));
+
+  if (newCandidates.length > 0) {
+    await TestCandidate.insertMany(newCandidates, {
+      ordered: false,
+    });
+  }
+
+  return res.status(201).json({
+    success: true,
+    added: newCandidates.length,
+    skipped: existingEmailSet.size,
+    duplicates: [...existingEmailSet],
+  });
+};

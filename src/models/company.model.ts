@@ -8,7 +8,7 @@ export interface Company extends Document {
 
 const CompanySchema = new Schema<Company>(
   {
-    name: { type: String, required: true, trim: true },
+    name: { type: String, required: true, trim: true, unique: true },
   },
   { timestamps: true, versionKey: false }
 );

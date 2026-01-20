@@ -4,7 +4,8 @@ import {
     getAllTest,
     getTest,
     updateTest,
-    deleteTest
+    deleteTest,
+    addTestCandidates
 } from "../controllers/test.controller.js";
 import { adminAuth } from "../middlewares/admin.js";
 
@@ -15,5 +16,7 @@ router.get("/getAll/:companyId", adminAuth,getAllTest);
 router.get("/get/:testId", adminAuth,getTest);
 router.put("/update/:testId", adminAuth,updateTest);
 router.delete("/delete/:testId", adminAuth,deleteTest);
+
+router.post("/:access_code/candidate/add", adminAuth, addTestCandidates);
 
 export default router;

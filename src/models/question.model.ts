@@ -1,26 +1,23 @@
 import mongoose, { Document, Schema } from "mongoose";
 
-
 export interface Question extends Document {
   title: string;
-
-  type: "MCQ" | "CODING" | "ESSAY";
+  type: "MCQ" | "CODING";
   difficulty?: "EASY" | "MEDIUM" | "HARD";
 
   content: {
     question: string;
-
     options?: string[];
     codeTemplate?: string;
     testCases?: {
       input: string;
       output: string;
+      isHidden?: boolean;
     }[];
   };
 
   correctAnswer?: {
-    optionIndex?: number;
-    explanation?: string;
+    optionIndex?: number // only for mcq
   };
 
   tags: string[];
@@ -28,6 +25,7 @@ export interface Question extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
+
 
 const QuestionSchema = new Schema<Question>(
   {
@@ -39,7 +37,7 @@ const QuestionSchema = new Schema<Question>(
 
     type: {
       type: String,
-      enum: ["MCQ", "CODING", "ESSAY"],
+      enum: ["MCQ", "CODING"],
       required: true,
     },
 
@@ -67,6 +65,7 @@ const QuestionSchema = new Schema<Question>(
         {
           input: { type: String, required: true },
           output: { type: String, required: true },
+          isHidden: { type: Boolean, default: false },
         },
       ],
     },
@@ -74,16 +73,13 @@ const QuestionSchema = new Schema<Question>(
     correctAnswer: {
       optionIndex: {
         type: Number,
-      },
-      explanation: {
-        type: String,
-      },
+      }
     },
 
     tags: {
       type: [String],
       default: [],
-    },
+    }
   },
   {
     timestamps: true,

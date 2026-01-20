@@ -7,9 +7,9 @@ export interface TestQuestion {
 }
 
 export interface Test extends Document {
-  company: Types.ObjectId;
   title: string;
-  description?: string;
+  company_id: Types.ObjectId;
+  company_name?: string;
   access_code: string;
   total_time_minutes: number;
   mobile_cam_required: boolean;
@@ -20,29 +20,24 @@ export interface Test extends Document {
 
 const TestSchema = new Schema<Test>(
   {
-    company: {
+    title: { type: String, required: true },
+    company_id: {
       type: Schema.Types.ObjectId,
       ref: "Company",
       required: true,
       index: true,
     },
-
-    title: { type: String, required: true },
-    description: String,
-
+    company_name: { type: String },
     access_code: { type: String, required: true, unique: true },
-
     total_time_minutes: {
       type: Number,
       required: true,
       min: 1,
     },
-
     mobile_cam_required: {
       type: Boolean,
       default: false,
     },
-
     questions: [
       {
         question: {
@@ -58,6 +53,8 @@ const TestSchema = new Schema<Test>(
   { timestamps: true, versionKey: false }
 );
 
-TestSchema.index({ company: 1, createdAt: -1 });
+TestSchema.index({ company_id: 1, createdAt: -1 }); // Fixed: was "company"
+TestSchema.index({ access_code: 1 }); // For quick lookups
+TestSchema.index({ status: 1, company_id: 1 }); // For filtering active tests
 
 export default mongoose.model<Test>("Test", TestSchema);
